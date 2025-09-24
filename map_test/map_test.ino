@@ -22,23 +22,20 @@
 #include "M5Cardputer.h"
 #include <TinyGPSPlus.h>
 #include "structs.h"
-#include "maps2.h"
+#include "maps.h"
 #include "chunks.h"
 
-static const uint32_t GPSBaud = 9600;
+const uint32_t GPSBaud = 9600;
 TinyGPSPlus gps;
 HardwareSerial GPS_Serial(2);
 
-double box_lon_min = -70.62192;
-double box_lon_max = -70.57162;
-double box_lat_min = -33.44345;
-double box_lat_max = -33.40513;
+bool first_time = true;
 
 int ii = 0;
 int jj = 0;
-int kk = 0;
+int kk = 39;
 
-int kk_o = 0;
+int kk_o = kk;
 
 void setup() {
   auto cfg = M5.config();
@@ -71,16 +68,20 @@ void loop() {
     if (gps.location.lng() != 0) {
     // if (true) {
 
-      ii = map_double(gps.location.lng(), box_lon_min, box_lon_max, 0, 4);
-      jj = map_double(gps.location.lat(), box_lat_min, box_lat_max, 0, 6);
+      ii = map_double(gps.location.lng(), box_lon_min, box_lon_max, 0.0, n_lon);
+      jj = map_double(gps.location.lat(), box_lat_min, box_lat_max, 0.0, n_lat);
       // ii = map_double(-70.5790919, box_lon_min, box_lon_max, 0, 4);
       // jj = map_double(-33.4118781, box_lat_min, box_lat_max, 0, 6);
       // ii = map_double(-70.6113078, box_lon_min, box_lon_max, 0, 3);
       // jj = map_double(-33.4317265, box_lat_min, box_lat_max, 0, 5);
       kk_o = kk;
-      kk = ii*6 + jj;
+      kk = ii*(n_lat) + jj;
+      // M5Cardputer.Display.drawNumber(ii, 60, 10);M5Cardputer.Display.drawFloat(map_double_test(gps.location.lng(), box_lon_min, box_lon_max, 0.0, n_lon), 6, 80, 10);
+      // M5Cardputer.Display.drawNumber(jj, 60, 20);M5Cardputer.Display.drawFloat(map_double_test(gps.location.lat(), box_lat_min, box_lat_max, 0.0, n_lat), 6, 80, 20);
+      // M5Cardputer.Display.drawNumber(kk, 60, 30);
 
-      if (kk_o != kk) {
+      if ((kk_o != kk) || (first_time)) {
+        first_time = false;
         M5Cardputer.Display.clear();
         for (uint16_t rowCnt = 0; rowCnt < maps[kk].length; rowCnt++) {
           for (uint16_t colCnt = 0; colCnt < maps[kk].lon[rowCnt].length - 1; colCnt++) {
@@ -96,10 +97,10 @@ void loop() {
         }
       }
 
-      double lat_min = box_lat_min + jj * 0.0063863;
-      double lat_max = box_lat_min + (jj + 1) * 0.0063863;
-      double lon_min = box_lon_min + ii * 0.012574627;
-      double lon_max = box_lon_min + (ii + 1) * 0.012574627;
+      double lat_min = box_lat_min + jj * d_lat;
+      double lat_max = box_lat_min + (jj + 1) * d_lat;
+      double lon_min = box_lon_min + ii * d_lon;
+      double lon_max = box_lon_min + (ii + 1) * d_lon;
 
       int x0 = map_double(gps.location.lng(), lon_min, lon_max, 0, M5Cardputer.Display.width());
       int y0 = map_double(gps.location.lat(), lat_min, lat_max, M5Cardputer.Display.height(), 0);
@@ -120,7 +121,11 @@ void loop() {
 
 // map for double precision floats
 int map_double(double x, double in_min, double in_max, double out_min, double out_max) {
-  return int((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min);
+  return int(floor((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min));
+}
+
+double map_double_test(double x, double in_min, double in_max, double out_min, double out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 int map_float(float x, float in_min, float in_max, float out_min, float out_max) {
